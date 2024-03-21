@@ -1,0 +1,113 @@
+﻿@code {
+
+    public RenderFragment BaseComponentMarkup =>
+        @<div>
+            <MudGrid>
+                <MudItem xs="12">
+                    <MudGrid>
+                        <MudItem xs="6">
+                            <MudSelect HelperText="Select data set" T="DataSetType" @bind-Value="SelectedDataset">
+                                @foreach (DataSetType model in Enum.GetValues(typeof(DataSetType)))
+                                {
+                                    <MudSelectItem Value="model">@model.GetDescription()</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="6"> 
+                        <MudSlider @bind-Value="DisplayScaler.ScaleValue" Immediate="false" Min="0" Max="200" Color="Color.Info">Display Scale: @DisplayScaler.ScaleValue% Image (Height, Width): (@DisplayScaler.ImageHeight, @DisplayScaler.ImageWidth)</MudSlider>
+                        </MudItem>
+                    </MudGrid>
+                </MudItem> 
+                <MudItem xs="12">
+                    <WebCaptureComponent @ref="captureComponent" FileService="@FileService" Width="@DisplayScaler.ImageWidth" Height="@DisplayScaler.ImageHeight" />
+                </MudItem>
+
+                @if (totalFrames > 1)
+                {
+                    <MudItem xs="12">
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText>Starting frame</MudText>
+                                <MudSlider @bind-Value="StartFrame" Immediate="false" Min="0" Max="@totalFrames" Color="Color.Info">Frame: @StartFrame</MudSlider>
+                            </MudItem>
+                            @if (IsTimeSeriesFrame)
+                            {
+                                <MudItem xs="6">
+                                    <MudText>Ending frame</MudText>
+                                    <MudSlider @bind-Value="EndFrame" Immediate="false" Min="@StartFrame" Max="@totalFrames" Color="Color.Info">Frame: @EndFrame</MudSlider>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudItem>
+                }
+            </MudGrid> 
+        </div>;
+
+    public RenderFragment BaseButtonMarkup =>
+        @<div>
+            <div style="margin-bottom: 8px;">
+
+                @if (selectedDataset == DataSetType.Stream)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartCapture" Style="margin-right: 8px;">Start Capture</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartCaptureProcess" Style="margin-right: 8px;">Process Stream</MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StopCapture">Stop Capture</MudButton>
+
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => ProcessImage()" Style="margin-right: 8px;">Process</MudButton>
+                    @if (totalFrames > 1 && IsTimeSeriesFrame || Operation == OperationType.Particle)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ProcessImageToEnd" Style="margin-right: 8px;">Process To End</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PauseOperation" Style="margin-right: 8px;">Pause</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ResetOperation" Style="margin-right: 8px;">Reset</MudButton>
+                    } 
+                }
+            </div>
+    </div>;
+
+
+
+
+    public RenderFragment BaseCanvasMarkup => 
+        @<div> 
+            <br/>
+            <br/>
+            <div id="canvas-container3">
+                @{
+                    var blazorMenuWidth = 20;
+                    var srcCanvasWidth = DisplayScaler.ImageWidth;
+                    var templateCanvasWidth = ShowTemplate ? templateWidthHeightSize : 0;
+                    var dstCanvasInitialLeft = blazorMenuWidth + srcCanvasWidth + 10; // Position if templateCanvas is not displayed
+                    var dstCanvasLeftWithTemplate = dstCanvasInitialLeft + templateCanvasWidth + (ShowTemplate ? 10 : 0);
+
+                    var srcCanvasStyle = $"position: absolute; left: {blazorMenuWidth}px; height: {DisplayScaler.ImageHeight}px;";
+                    var templateCanvasStyle = ShowTemplate ? $"position: absolute; left: {blazorMenuWidth + srcCanvasWidth + 10}px;" : "";
+                    var dstCanvasStyle = $"position: absolute; left: {(ShowTemplate ? dstCanvasLeftWithTemplate : dstCanvasInitialLeft)}px; height: {DisplayScaler.ImageHeight}px;";
+                @if (!ShowCanvas)
+                {
+                    srcCanvasStyle += "display:none;";
+                    templateCanvasStyle += "display:none;";
+                    dstCanvasStyle += "display:none;";
+                }
+
+                <div style="position: relative; width: 100%;">
+                    <canvas @ref="srcCanvas" style="@srcCanvasStyle" width="@srcCanvasWidth" height="@DisplayScaler.ImageHeight">
+                    </canvas>
+                    <canvas id="overlayCanvas" style="@srcCanvasStyle" width="@srcCanvasWidth" height="@DisplayScaler.ImageHeight"></canvas>
+                    @if (ShowTemplate)
+                    {
+                        <canvas @ref="templateCanvas" style="@templateCanvasStyle" width="@($"{templateWidthHeightSize}px")" height="@($"{templateWidthHeightSize}px")">
+                        </canvas>
+                    }
+                    <canvas @ref="dstCanvas" style="@dstCanvasStyle" width="@DisplayScaler.ImageWidth" height="@DisplayScaler.ImageHeight">
+                    </canvas>
+                </div>
+
+                }
+            </div>
+        </div>;
+
+
+}

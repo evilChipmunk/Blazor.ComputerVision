@@ -1,0 +1,82 @@
+﻿@using Python.Runtime
+@using Numpy
+@using System.Diagnostics
+@using System.Numerics
+
+<br />
+<MudText Align="Align.Center" Typo="Typo.h3">Image pipeline</MudText>
+<br />
+<br />
+<img src="images/imagepipeline.png" style="width:100%;display: block; margin-left: auto;" />
+
+@code
+{
+
+    protected override Task OnInitializedAsync()
+    {
+        return base.OnInitializedAsync();
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            Random rand = new Random();
+
+            var arr = new int[100, 100];
+
+            for (int i = 0; i < arr.GetLength(0); i++)
+            {
+                for (int j = 0; j < arr.GetLength(1); j++)
+                {
+                    // Fill each element with a random integer from 0 to 9
+                    arr[i, j] = rand.Next(0, 255);
+                }
+            }
+
+            var its = 1000;
+
+            var watch = Stopwatch.StartNew();
+            using (Py.GIL())
+            {
+                for (int i = 0; i < its; i++)
+                {
+                    var nparr = np.array(arr);
+                    var nparr2 = np.array(arr);
+                    var result = nparr2 + nparr;
+
+                }
+            }
+
+            Console.WriteLine($"Time : {watch.Elapsed.TotalMilliseconds}");
+
+
+            watch = Stopwatch.StartNew();
+
+            for (int i = 0; i < its; i++)
+            {
+
+                int[] flattenedArray = new int[arr.GetLength(0) * arr.GetLength(1)];
+
+                // Flatten the 2D array
+                int flatIndex = 0;
+                for (int ii = 0; ii < arr.GetLength(0); ii++)
+                {
+                    for (int j = 0; j < arr.GetLength(1); j++)
+                    {
+                        flattenedArray[flatIndex++] = arr[ii, j];
+                    }
+                }
+
+                var nparr = new Vector<int>(flattenedArray);
+                var nparr2 = new Vector<int>(flattenedArray);
+                var result = nparr2 + nparr;
+
+            }
+
+            Console.WriteLine($"Time : {watch.Elapsed.TotalMilliseconds}");
+        }
+
+        return base.OnAfterRenderAsync(firstRender);
+    }
+}

@@ -1,0 +1,38 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager navManager
+<MudThemeProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<PageTitle>Vision.Server</PageTitle>
+
+
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudButton OnClick="gotoInfo" StartIcon="@Icons.Material.Filled.Info" Color="Color.Inherit" Edge="Edge.Start">Information</MudButton>
+        <MudSpacer />
+        <MudButton OnClick="gotoLab" StartIcon="@Icons.Material.Filled.Science" Color="Color.Inherit">Lab</MudButton> 
+    </MudAppBar>
+
+    <MudMainContent>
+        <div class="page">
+            <main>
+                <article class="content px-4">
+                    @Body
+                </article>
+            </main>
+        </div>
+    </MudMainContent>
+</MudLayout>
+
+@code
+{
+
+    private void gotoInfo()
+    {
+        navManager.NavigateTo("/"); 
+    }
+    private void gotoLab()
+    {
+        navManager.NavigateTo("/opencvfeatures");
+    }
+}

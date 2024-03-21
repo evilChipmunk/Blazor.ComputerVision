@@ -1,0 +1,82 @@
+#img {
+    display: none;
+}
+
+#canvas-container {
+    position: relative;
+}
+
+canvas {
+    position: absolute;
+    /* left: 0; */
+    /* top: 0; */
+}
+
+#dstCanvas {
+    z-index: 0;
+}
+
+#overlayCanvas {
+    z-index: 1;
+}
+
+#canvas-container3 {
+    display: flex;
+    flex-wrap: nowrap; /* Adjust this as needed */
+    gap: 10px; /* Adjust spacing between canvas elements */
+}
+.canvas-item3 {
+    flex: 0 1 auto; /* Allows the canvas to grow and shrink but not to fill the space */ 
+}
+/*
+#canvas-container2 {
+    position: relative;
+    display: flex;  Use flex layout to arrange canvas elements  
+    flex-wrap: wrap;  
+    justify-content: space-between;  
+    align-items: flex-start;  
+    gap: 10px;  
+    overflow: auto;  
+    max-height: 100vh;  
+}
+
+
+.canvas-item2 {  
+    max-width: 100%;  
+    box-sizing: border-box;  
+}
+/*
+/* Ensure subsequent components have clear separation from the canvas container */
+.following-component {
+    margin-top: 20px; /* Adjust as needed */
+}
+
+.my-scrollable-container {
+    max-height: 90vh; /* Adjust based on your layout */
+    overflow-y: auto; /* Enables vertical scrolling */
+    overflow-x: hidden; /* Disables horizontal scrolling */
+}
+
+.recognition-card {
+    /* Style your card here */
+    margin: 8px;
+    text-align: center;
+}
+
+.recognition-image {
+    width: 100%; /* Adjust as necessary */
+    height: auto; /* Adjust for aspect ratio */
+    margin-bottom: 8px;
+}
+
+
+.image-gallery {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Adjust the number of columns as needed */
+    gap: 10px; /* Adjust the gap between images as needed */
+}
+
+    .image-gallery img {
+        width: 100%; /* Makes images responsive */
+        height: auto; /* Maintains aspect ratio */
+    }

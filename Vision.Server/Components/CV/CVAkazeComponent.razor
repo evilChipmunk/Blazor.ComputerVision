@@ -1,0 +1,29 @@
+﻿@using OpenCvSharp
+@inherits CVComponent
+@BaseComponentMarkup
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+@BaseCanvasMarkup
+
+@code {
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {
+         
+        using var grayMat = new Mat();
+        Cv2.CvtColor(startFrameMat, grayMat, ColorConversionCodes.BGR2GRAY);
+
+        using var akaze = AKAZE.Create();
+        using var descriptors = new Mat();
+        akaze.DetectAndCompute(grayMat, null, out var keypoints, descriptors);
+
+        using var dstMat = startFrameMat.Clone();
+        Cv2.DrawKeypoints(startFrameMat, keypoints, dstMat);
+
+        await SetDstImage(dstMat);
+    }
+
+}

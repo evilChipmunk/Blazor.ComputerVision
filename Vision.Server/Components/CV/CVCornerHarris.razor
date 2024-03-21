@@ -1,0 +1,235 @@
+﻿@using ImagingOps
+@using Numpy
+@using OpenCvSharp
+@using Size = MudBlazor.Size
+@inherits CVComponent
+@BaseComponentMarkup
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+ 
+<MudText>10 HARRIS Features zoomed in to the feature</MudText>
+@foreach (var item in HarrisKeypoints)
+{  
+    <MudImage Style="margin: 2px;" Src="@($"data:image/png;base64,{item}")"/> 
+} 
+<br />
+<br />
+<MudText>10 FAST Features zoomed in to the feature</MudText>
+@foreach (var item in FASTKeypoints)
+{
+    <MudImage Style="margin: 2px;" Src="@($"data:image/png;base64,{item}")" />
+}
+<br />
+<br/>
+@BaseCanvasMarkup
+
+<br/>
+ 
+@code {
+
+    protected List<string> HarrisKeypoints { get; set; } = new();
+    protected List<string> FASTKeypoints { get; set; } = new();
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {
+        HarrisKeypoints = new();
+        FASTKeypoints = new();
+
+        var fastImage = await ProcessFAST(startFrameMat);
+
+        using var grayMat = new Mat();
+        Cv2.CvtColor(startFrameMat, grayMat, ColorConversionCodes.BGR2GRAY);
+
+        Mat dst = new Mat();
+        Cv2.CornerHarris(grayMat, dst, blockSize: 2, ksize: 3, k: 0.04);
+
+        // Instead of normalizing and thresholding the response, collect corners and their scores
+        List<KeyValuePair<Point, float>> corners = new List<KeyValuePair<Point, float>>();
+        for (int j = 0; j < dst.Rows; j++)
+        {
+            for (int i = 0; i < dst.Cols; i++)
+            {
+                float score = dst.At<float>(j, i);
+                if (score > 0) // Consider adding a preliminary threshold here if needed
+                {
+                    corners.Add(new KeyValuePair<Point, float>(new Point(i, j), score));
+                }
+            }
+        }
+
+        // Sort corners by score in descending order and take the top 10
+        var topCorners = corners.OrderByDescending(c => c.Value).Take(10).ToList();
+
+        // Use the original image or a clone of the start frame for drawing
+        using var dstMat = startFrameMat.Clone();
+        foreach (var corner in topCorners)
+        {
+            Cv2.Circle(dstMat, corner.Key, 5, Scalar.Red, 1);
+        }
+
+        var points = new List<MyPointHolder>();
+        foreach (var corner in topCorners)
+        {
+            var holder = new MyPointHolder
+            {
+                Point = new Point(corner.Key.X, corner.Key.Y), Size = 5
+            };
+            points.Add(holder);
+        }
+
+
+        DrawKeypoints(grayMat, points, HarrisKeypoints);
+
+        Mat[] arrayToConcat = { dstMat, fastImage };
+        Mat concatenatedImage = new Mat();
+
+        Cv2.HConcat(arrayToConcat, concatenatedImage);
+        await SetDstImage(concatenatedImage);
+         
+
+    }
+
+    public class MyPointHolder
+    {
+        public Point Point { get; set; } = new();
+        public int Size { get; set; }
+    }
+
+    protected async Task<Mat> ProcessFAST(Mat startFrameMat)
+    {
+        FastFeatureDetector fast = FastFeatureDetector.Create(threshold: 50, nonmaxSuppression: true);
+        KeyPoint[] keypoints = fast.Detect(startFrameMat);
+
+        var dstMat = startFrameMat.Clone();
+        foreach (var kp in keypoints)
+        {
+            Cv2.DrawMarker(dstMat, (Point)kp.Pt, Scalar.Red, MarkerTypes.Cross, 2);
+        }
+
+        var points = new List<MyPointHolder>();
+        foreach (var corner in keypoints.Take(10))
+        {
+            var holder = new MyPointHolder
+            {
+                Point = new Point(corner.Pt.X, corner.Pt.Y), Size = (int)corner.Size
+            };
+            points.Add(holder);
+        }
+
+        
+        DrawKeypoints(startFrameMat, points, FASTKeypoints);
+        // DrawKeypoints(startFrameMat, keypoints, FASTKeypoints);
+
+        return dstMat;
+
+    }
+
+
+    protected void DrawKeypoints(Mat initialGrayMat, List<MyPointHolder> keypoints, List<string> urls)
+    {
+        // Parameters
+        int enlargedSize = 100; // New size after enlargement
+
+        foreach (var kp in keypoints.Take(10)) // Just an example, processing the first 10 keypoints
+        {
+            int roiSize = (int)kp.Size;
+            // Calculate the ROI bounds, ensuring they are within the image
+            int x = Math.Max((int)kp.Point.X - roiSize / 2, 0);
+            int y = Math.Max((int)kp.Point.Y - roiSize / 2, 0);
+            x = Math.Min(x, initialGrayMat.Width - roiSize);
+            y = Math.Min(y, initialGrayMat.Height - roiSize);
+
+            // Define the ROI around the keypoint
+            Rect roi = new Rect(x, y, roiSize, roiSize);
+
+            // Extract the ROI from the original image
+            Mat keypointROI = new Mat(initialGrayMat, roi);
+
+            // Resize the extracted ROI
+            Mat enlargedROI = new Mat();
+            Cv2.Resize(keypointROI, enlargedROI, new OpenCvSharp.Size(enlargedSize, enlargedSize), 0, 0, InterpolationFlags.Cubic);
+
+            if (roiSize == 5)
+            {
+                Mat blurred = new Mat();
+                Cv2.GaussianBlur(enlargedROI, blurred, new OpenCvSharp.Size(0, 0), 3);
+
+                // Enhance the original image by adding the detail back to it
+                Mat sharpened = new Mat();
+                double alpha = 1.5; // Coefficient for the original image
+                double beta = -0.5; // Coefficient for the blurred image
+                double gamma = 0; // Scalar added to each sum
+                Cv2.AddWeighted(enlargedROI, alpha, blurred, beta, gamma, sharpened);
+
+
+
+                urls.Add(ImageOps.MatToBase64(enlargedROI));
+
+                // Mat edges = new Mat();
+                // Cv2.Canny(enlargedROI, edges, lowerThreshold, upperThreshold);
+                // urls.Add(ImageOps.MatToBase64(edges));
+            }
+            else
+            {
+                urls.Add(ImageOps.MatToBase64(enlargedROI));
+            }
+
+        }
+    }
+
+    protected void DrawKeypoints(Mat initialGrayMat, KeyPoint[] initialKeypoints, List<string> urls)
+    {
+        // Parameters
+        int enlargedSize = 100; // New size after enlargement
+
+        foreach (var kp in initialKeypoints.Take(10)) // Just an example, processing the first 10 keypoints
+        {
+            int roiSize = (int)kp.Size;
+            // Calculate the ROI bounds, ensuring they are within the image
+            int x = Math.Max((int)kp.Pt.X - roiSize / 2, 0);
+            int y = Math.Max((int)kp.Pt.Y - roiSize / 2, 0);
+            x = Math.Min(x, initialGrayMat.Width - roiSize);
+            y = Math.Min(y, initialGrayMat.Height - roiSize);
+
+            // Define the ROI around the keypoint
+            Rect roi = new Rect(x, y, roiSize, roiSize);
+
+            // Extract the ROI from the original image
+            Mat keypointROI = new Mat(initialGrayMat, roi);
+
+            // Resize the extracted ROI
+            Mat enlargedROI = new Mat();
+            Cv2.Resize(keypointROI, enlargedROI, new OpenCvSharp.Size(enlargedSize, enlargedSize), 0, 0, InterpolationFlags.Cubic);
+
+            if (roiSize == 5)
+            {
+                Mat blurred = new Mat();
+                Cv2.GaussianBlur(enlargedROI, blurred, new OpenCvSharp.Size(0, 0), 3);
+
+                // Enhance the original image by adding the detail back to it
+                Mat sharpened = new Mat();
+                double alpha = 1.5; // Coefficient for the original image
+                double beta = -0.5; // Coefficient for the blurred image
+                double gamma = 0; // Scalar added to each sum
+                Cv2.AddWeighted(enlargedROI, alpha, blurred, beta, gamma, sharpened);
+
+      
+
+                urls.Add(ImageOps.MatToBase64(enlargedROI));
+
+                // Mat edges = new Mat();
+                // Cv2.Canny(enlargedROI, edges, lowerThreshold, upperThreshold);
+                // urls.Add(ImageOps.MatToBase64(edges));
+            }
+            else
+            {
+                urls.Add(ImageOps.MatToBase64(enlargedROI));
+            }
+
+        }
+    }
+
+}

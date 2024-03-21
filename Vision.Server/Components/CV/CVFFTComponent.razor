@@ -1,0 +1,125 @@
+﻿@using OpenCvSharp as cv2;
+@using ImagingOps
+@using Numpy;
+@using Size = OpenCvSharp.Size
+@inherits CVComponent
+@BaseComponentMarkup 
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+@BaseCanvasMarkup
+
+
+@code {
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {
+        // Convert the starting frame to grayscale
+        Mat grayImage = new Mat();
+        Cv2.CvtColor(startFrameMat, grayImage, ColorConversionCodes.BGR2GRAY);
+        grayImage.ConvertTo(grayImage, MatType.CV_32F); // Convert to float for DFT
+
+        // Apply DFT
+        Mat fftImage = new Mat();
+        Cv2.Dft(grayImage, fftImage, DftFlags.ComplexOutput);
+
+        // Compute magnitude for visualization
+        Mat[] planes = new Mat[] { new Mat(), new Mat() };
+        Cv2.Split(fftImage, out planes); // planes[0] = Re(DFT(I)), planes[1] = Im(DFT(I))
+        Mat magnitude = new Mat();
+        Cv2.Magnitude(planes[0], planes[1], magnitude);
+        magnitude += Scalar.All(1); // Switch to logarithmic scale
+        Cv2.Log(magnitude, magnitude);
+        // Normalize the magnitude to [0, 255]
+        Cv2.Normalize(magnitude, magnitude, 0, 255, NormTypes.MinMax);
+        Mat displayImage = new Mat();
+        magnitude.ConvertTo(displayImage, MatType.CV_8U);
+
+        // Perform inverse DFT
+        Mat ifftResult = new Mat();
+        Cv2.Dft(fftImage, ifftResult, DftFlags.Inverse | DftFlags.RealOutput);
+        Cv2.Normalize(ifftResult, ifftResult, 0, 255, NormTypes.MinMax);
+        ifftResult.ConvertTo(ifftResult, MatType.CV_8U);
+
+        // Resize images for concatenation to match the height of the original image
+        Mat resizedDisplayImage = displayImage.Resize(new Size(startFrameMat.Width, startFrameMat.Height));
+        Mat resizedIfftResult = ifftResult.Resize(new Size(startFrameMat.Width, startFrameMat.Height));
+
+        // Concatenate the original image with FFT and iFFT results side by side
+        Mat[] arrayToConcat = { resizedDisplayImage, resizedIfftResult };
+        Mat concatenatedImage = new Mat(); 
+        
+        Cv2.HConcat(arrayToConcat, concatenatedImage); 
+        await SetDstImage(concatenatedImage);
+    }
+
+
+    private async Task FFtAlg(Mat startFrameMat, Mat endFrameMat)
+    { 
+        // Expand the image to an optimal size, padding with zeros
+        Mat padded = new Mat();
+        int m = Cv2.GetOptimalDFTSize(startFrameMat.Rows);
+        int n = Cv2.GetOptimalDFTSize(startFrameMat.Cols);
+        Cv2.CopyMakeBorder(startFrameMat, padded, 0, m - startFrameMat.Rows, 0, n - startFrameMat.Cols, BorderTypes.Constant,
+            Scalar.All(0));
+
+        // Create planes to hold the complex and real parts
+        Mat[] planes = new Mat[] { new Mat<float>(padded), Mat.Zeros(padded.Size(), MatType.CV_32F) };
+        Mat complexImage = new Mat();
+
+        try
+        {
+            // Merge the planes into a single complex image
+            Cv2.Merge(planes, complexImage);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+
+        // Apply FFT
+        Cv2.Dft(complexImage, complexImage);
+
+        // Split the complex image into two parts: real and imaginary
+        Cv2.Split(complexImage, out planes);
+
+        // Compute the magnitude (sqrt(re^2 + im^2))
+        Mat magnitude = new Mat();
+        Cv2.Magnitude(planes[0], planes[1], magnitude);
+
+        // Move to a logarithmic scale to see the spectrum
+        Cv2.Add(Mat.Ones(magnitude.Size(), MatType.CV_32F), magnitude, magnitude);
+        Cv2.Log(magnitude, magnitude);
+
+        // Normalize the magnitude to [0,1] then scale to [0,255]
+        Cv2.Normalize(magnitude, magnitude, 0, 255, NormTypes.MinMax);
+
+        // Convert the magnitude to byte scale
+        Mat magI = new Mat();
+        magnitude.ConvertTo(magI, MatType.CV_8UC1);
+
+        // Rearrange the quadrants of Fourier image so that the origin is at the image center
+        int cx = magI.Cols / 2;
+        int cy = magI.Rows / 2;
+
+        Mat q0 = new Mat(magI, new Rect(0, 0, cx, cy)); // Top-Left
+        Mat q1 = new Mat(magI, new Rect(cx, 0, cx, cy)); // Top-Right
+        Mat q2 = new Mat(magI, new Rect(0, cy, cx, cy)); // Bottom-Left
+        Mat q3 = new Mat(magI, new Rect(cx, cy, cx, cy)); // Bottom-Right
+
+        Mat tmp = new Mat();
+        q0.CopyTo(tmp);
+        q3.CopyTo(q0);
+        tmp.CopyTo(q3);
+
+        q1.CopyTo(tmp);
+        q2.CopyTo(q1);
+        tmp.CopyTo(q2);
+
+
+        await SetDstImage(magI);
+    }
+}

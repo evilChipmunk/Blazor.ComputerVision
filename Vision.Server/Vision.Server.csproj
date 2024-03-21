@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Optimize>False</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Components\ImageIterator.razor.cs" />
+    <Compile Remove="Components\ImageIterator2.razor.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Components\ImageIterator.razor" />
+    <Content Remove="Components\ImageIterator2.razor" />
+  </ItemGroup>
+  <ItemGroup>   
+    <PackageReference Include="MudBlazor" Version="6.1.9" />  
+    <PackageReference Include="OpenCvSharp4.Windows" Version="4.7.0.20230115" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Imaging2\Imaging2.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="wwwroot\images\faces\determine\" />
+    <Folder Include="wwwroot\images\faces\train\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="wwwroot\particlelatex.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

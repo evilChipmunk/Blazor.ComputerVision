@@ -1,0 +1,46 @@
+﻿ 
+@inject IJSRuntime JSRuntime
+
+<video playsinline autoplay muted width="@Width" height="@Height" style="display: none;"></video>
+
+@code {
+    [Parameter]
+    public FileService FileService { get; set; }
+    [Parameter]
+    public int Width { get; set; }
+    [Parameter]
+    public int Height { get; set; }
+    private DotNetObjectReference<WebCaptureComponent> dotNetReference;
+
+    protected override async Task OnInitializedAsync()
+    {
+        dotNetReference = DotNetObjectReference.Create(this);
+        await JSRuntime.InvokeVoidAsync("registerComponent", dotNetReference);
+    }
+ 
+    public async Task StartWebcam()
+    {
+        await JSRuntime.InvokeVoidAsync("startWebcam");
+        
+        // await JSRuntime.InvokeVoidAsync("startContinuousCapture", 1000); // Example: Capture every second 
+    }
+
+    public async Task StopWebcam()
+    { 
+        await JSRuntime.InvokeVoidAsync("stopWebcam");
+    }
+
+    [JSInvokable]
+    public Task ReceiveImage(string imageDataUrl)
+    {
+        var imageData =Convert.FromBase64String(imageDataUrl.Split(',')[1]);
+
+        FileService?.NotifyNewImageData(imageData, imageDataUrl);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        dotNetReference?.Dispose();
+    }
+}

@@ -1,0 +1,42 @@
+﻿@using OpenCvSharp 
+@inherits CVComponent
+@BaseComponentMarkup
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+@BaseCanvasMarkup
+
+@code {
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {  
+        var faceMatDst = startFrameMat.Clone();
+          
+        using var faceGrayMat = new Mat();
+
+        Cv2.CvtColor(startFrameMat, faceGrayMat, ColorConversionCodes.BGR2GRAY);
+
+        // Load the Haar Cascade classifier for face detection
+        var haarCascade = new CascadeClassifier();
+        var faceXml = FileService.GetHaarCascade_Face();
+        haarCascade.Load(faceXml);
+
+        // Detect faces
+        var faces = haarCascade.DetectMultiScale(faceGrayMat,
+            1.1,
+            4,
+            HaarDetectionTypes.ScaleImage,
+            new OpenCvSharp.Size(30, 30));
+
+        // Draw rectangles around detected faces
+        foreach (var face in faces)
+        {
+            var color = Scalar.Red;
+            Cv2.Rectangle(faceMatDst, face, color, 2);
+        }
+
+        await SetDstImage(faceMatDst);
+    }
+
+}

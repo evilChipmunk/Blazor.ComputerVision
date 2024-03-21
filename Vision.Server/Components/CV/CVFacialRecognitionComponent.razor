@@ -1,0 +1,314 @@
+﻿ 
+@using OpenCvSharp
+@using OpenCvSharp.Face
+@using Size = OpenCvSharp.Size
+@using System.Runtime.InteropServices.ComTypes
+@using System.Diagnostics
+@using ImagingOps
+@inherits CVComponent
+
+<br />
+<br />
+<MudItem xs="6">
+    <MudText>Training Split</MudText>
+    <MudSlider @bind-Value="TrainingSplit" Immediate="false" Min="2" Max="@Samples" Color="Color.Info">@TrainingSplit</MudSlider>
+</MudItem>
+<br />
+<br />
+@BaseButtonMarkup
+
+<br />
+<br />
+@BaseCanvasMarkup
+
+<br />
+<br />
+
+<div> 
+    <MudGrid>
+        <MudItem xs="6">
+            <span>Total Samples: @Samples</span>
+            <br/>
+            <span>Training Samples: @TrainingSplit</span>
+            <br/>
+            <span>Prediction Samples: @(Samples - TrainingSplit)</span>
+        </MudItem>
+        <MudItem xs="6">
+            <span>Data Preparation Time: @DataPrepTime</span>
+            <br/>
+            <span>Training Time: @TrainingTime</span>
+            <br/>
+            <span>Prediction Time: @PredictionTime</span>
+        </MudItem>
+    </MudGrid>
+</div>
+
+<br />
+<br />
+
+@if (RecognitionResults != null)
+{
+    <span></span>
+    <MudPaper Class="my-scrollable-container" Elevation="0">
+        <MudGrid Spacing="4">
+            @foreach (var item in RecognitionResults)
+            {
+ 
+                var style = "";
+
+                if (item.Confidence > 70)
+                {
+                    style = "font-weight: bold; color:red;";
+                }
+                
+     
+                <MudItem xs="12" sm="6" md="4" lg="3">
+                    <div class="recognition-card">
+                        <MudImage Src="@($"data:image/png;base64,{item.ImageUrl}")" Alt="Your Image Description"/>
+                        <br/>
+                        <div>
+                            <span style="font-weight: bold;">Prediction: </span>
+                            <span style="@style">@item.Label</span>
+                        </div>
+                        <div>
+                            <span style="font-weight: bold;">Confidence: </span>
+                            <span style="@style">@item.Confidence.ToString("F4")</span>
+                        </div> 
+                    </div>
+                </MudItem>
+            }
+        </MudGrid>
+    </MudPaper>
+
+}
+
+@code
+{
+    public class RecognitionResult
+    {
+        public string ImageUrl { get; set; }  
+        public string Label { get; set; }
+        public double Confidence { get; set; }
+    }
+
+    public List<RecognitionResult> RecognitionResults { get; set; }
+    private int Samples { get; set; }
+    private int TrainingSplit { get; set; }
+    private string DataPrepTime { get; set; }
+    private string TrainingTime { get; set; }
+    private string PredictionTime { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        TrainingSplit = 100;
+        Samples = 166;
+        await base.OnInitializedAsync(); 
+        ShowCanvas = false; 
+    }
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    { 
+        // Load the Haar Cascade classifier for face detection
+        var haarCascade = new CascadeClassifier();
+        var faceXml = FileService.GetHaarCascade_Face();
+        haarCascade.Load(faceXml);
+
+
+        var images = new List<Mat>();
+        var labels = new List<int>();
+
+        // Initialize the face recognizer
+        var faceRecognizer = LBPHFaceRecognizer.Create();
+
+        // and contain images for each corresponding person 
+        var list = FileService.CreateFiles(DataSetType.PresidentHand);
+        Samples = list.Count;
+
+        var watch = Stopwatch.StartNew();
+        await CreateTrainingSet(TrainingSplit, list, haarCascade, images, labels);
+        DataPrepTime = $"{watch.Elapsed.TotalMilliseconds} milliseconds"; 
+
+        watch = Stopwatch.StartNew();
+        TrainClassifier(faceRecognizer, images, labels);
+        TrainingTime = $"{watch.Elapsed.TotalMilliseconds} milliseconds";
+
+        watch = Stopwatch.StartNew();
+        var results = await PredictResults(faceRecognizer, TrainingSplit, list, haarCascade);
+        PredictionTime = $"{watch.Elapsed.TotalMilliseconds} milliseconds";
+
+       results = results.OrderBy(x => x.Confidence).ToList();
+       RecognitionResults = new List<RecognitionResult>(results);
+    }
+
+    private async Task<List<RecognitionResult>> PredictResults(LBPHFaceRecognizer faceRecognizer, int index, List<string> list, CascadeClassifier haarCascade)
+    {
+        var results = new List<RecognitionResult>();
+        Console.WriteLine("Test Mandrill");
+        var mandrill = await FileService.GetMandrill(ImreadModes.Grayscale); 
+        faceRecognizer.Predict(mandrill, out var mandrillLabel, out var mandrillConfidence); 
+        System.Console.WriteLine( $"Mandrill prediction, Predicted Label: {mandrillLabel}, Confidence: {mandrillConfidence}");
+
+
+        var mandrillResult = new RecognitionResult
+        {
+            ImageUrl = ImageOps.MatToBase64(mandrill, ".png"), 
+            Label = "Mandrill",
+            Confidence = mandrillConfidence 
+        };
+
+        results.Add(mandrillResult);
+
+        for (var i = index; i < list.Count; i++)
+        {
+            Console.WriteLine(i);
+
+            var file = list[i];
+            Mat originalImage = await FileService.GetMat(file, DataSetType.PresidentHand);
+
+            // Calculate the width of each half
+            int halfWidth = originalImage.Width / 2;
+
+            // Define the rectangles for the left and right halves
+            Rect leftRect = new Rect(0, 0, halfWidth, originalImage.Height);
+            Rect rightRect = new Rect(halfWidth, 0, halfWidth, originalImage.Height);
+
+            // Use the rectangles to create new Mat objects for each half
+            Mat leftHalf = new Mat(originalImage, leftRect);
+
+            var faces = haarCascade.DetectMultiScale(leftHalf,
+                1.1,
+                4,
+                HaarDetectionTypes.ScaleImage,
+                new Size(30, 30));
+                 
+
+            if (faces.Length > 0)
+            {
+                var faceImg = new Mat(leftHalf, faces[0]); // Assuming the first detected face is the correct one
+
+                // Predict the label of the test image
+                faceRecognizer.Predict(faceImg, out var label, out var confidence);
+
+                // predictedLabel.Distance gives you the confidence score (lower is better)
+ 
+                System.Console.WriteLine(
+                    $"Left half prediction, Predicted Label: {label}, Confidence: {confidence}");
+
+                var result = new RecognitionResult
+                {
+                    ImageUrl = ImageOps.MatToBase64(faceImg),
+                    Label = ((FaceLabel)label).ToString(),
+                    Confidence = confidence
+                };
+                results.Add(result);
+            }
+
+
+            Mat rightHalf = new Mat(originalImage, rightRect);
+            faces = haarCascade.DetectMultiScale(rightHalf,
+                1.1,
+                4,
+                HaarDetectionTypes.ScaleImage,
+                new Size(30, 30));
+
+            if (faces.Length > 0)
+            {
+                var faceImg = new Mat(rightHalf, faces[0]); // Assuming the first detected face is the correct one
+
+                // Predict the label of the test image
+                faceRecognizer.Predict(faceImg, out var label, out var confidence);
+
+                // predictedLabel.Distance gives you the confidence score (lower is better)
+                System.Console.WriteLine(
+                    $"Right half prediction, Predicted Label: {label}, Confidence: {confidence}");
+
+
+                var result = new RecognitionResult
+                {
+                    ImageUrl = ImageOps.MatToBase64(faceImg),
+                    Label = ((FaceLabel)label).ToString(),
+                    Confidence = confidence
+                };
+                results.Add(result);
+            }
+
+            Console.WriteLine();
+        }
+
+        return results;
+
+    }
+
+    private static void TrainClassifier(LBPHFaceRecognizer faceRecognizer, List<Mat> images, List<int> labels)
+    {
+        System.Console.WriteLine($"Training...");
+        // Train the recognizer
+        faceRecognizer.Train(images, labels.ToArray());
+        System.Console.WriteLine($"Training complete");
+    }
+
+    private async Task CreateTrainingSet(int index, List<string> list, CascadeClassifier haarCascade, List<Mat> images, List<int> labels)
+    {
+        for (var i = 0; i < index; i++)
+        {
+            var file = list[i];
+
+            i++;
+            Mat originalImage = await FileService.GetMat(file, DataSetType.PresidentHand);
+
+            // Cv2.ImShow("or", originalImage);
+            // Cv2.WaitKey(0);
+
+            // Calculate the width of each half
+            int halfWidth = originalImage.Width / 2;
+
+            // Define the rectangles for the left and right halves
+            Rect leftRect = new Rect(0, 0, halfWidth, originalImage.Height);
+            Rect rightRect = new Rect(halfWidth, 0, halfWidth, originalImage.Height);
+
+            // Use the rectangles to create new Mat objects for each half
+            Mat leftHalf = new Mat(originalImage, leftRect);
+            // Detect faces
+            var faces = haarCascade.DetectMultiScale(leftHalf,
+                1.1,
+                4,
+                HaarDetectionTypes.ScaleImage,
+                new Size(30, 30));
+
+            if (faces.Length > 0)
+            {
+                var faceImg = new Mat(leftHalf, faces[0]); // Assuming the first detected face is the correct one
+
+                //
+                // Cv2.ImShow("l", faceImg);
+                // Cv2.WaitKey(0);
+                // Cv2.DestroyAllWindows();
+
+                images.Add(faceImg);
+                labels.Add((int)FaceLabel.Romney);
+            }
+
+            Mat rightHalf = new Mat(originalImage, rightRect);
+            // Detect faces
+            faces = haarCascade.DetectMultiScale(rightHalf,
+                1.1,
+                4,
+                HaarDetectionTypes.ScaleImage,
+                new Size(30, 30));
+
+            if (faces.Length > 0)
+            {
+                var faceImg = new Mat(rightHalf, faces[0]); // Assuming the first detected face is the correct one
+
+
+                // Cv2.ImShow("r", faceImg);
+                // Cv2.WaitKey(0);
+                // Cv2.DestroyAllWindows();
+
+
+                images.Add(faceImg);
+                labels.Add((int)FaceLabel.Obama);
+            }
+        }
+    }
+}

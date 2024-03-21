@@ -1,0 +1,88 @@
+﻿ 
+@using OpenCvSharp
+@inherits CVComponent
+
+<br />
+<br />
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudText Typo="Typo.h6">General Settings</MudText>
+        @BaseComponentMarkup
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <div class="threshold-component">
+            <MudText Typo="Typo.h6">Operation Settings</MudText>
+            <MudText>Threshold 1</MudText>
+            <MudSlider @bind-Value="ThresHold1" Immediate="false" Min="0" Max="255" Color="Color.Info">@ThresHold1</MudSlider>
+            <MudText>Threshold 2</MudText>
+            <MudSlider @bind-Value="ThresHold2" Immediate="false" Min="0" Max="255" Color="Color.Info">@ThresHold2</MudSlider>
+        </div>
+    </MudItem>
+</MudGrid>
+
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+@BaseCanvasMarkup
+
+@code {
+
+    protected override Task OnInitializedAsync()
+    {
+
+        threshold1 = 32;
+        threshold2 = 128;
+        return base.OnInitializedAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            //timing is off on this, but it's a good first guess on what the thresholds might be for an image
+            // using var grayMat = new Mat();
+            // Cv2.CvtColor(SrcMat, grayMat, ColorConversionCodes.BGR2GRAY);
+
+            // double medianValue = Cv2.Mean(grayMat).Val0;  
+            // double threshold1 = Math.Max(0, (1.0 - 0.33) * medianValue);
+            // double threshold2 = Math.Min(255, (1.0 + 0.33) * medianValue);
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    private double threshold1;
+    public double ThresHold1
+    {
+        get => threshold1;
+        set
+        {
+            threshold1 = value;
+            InvokeAsync(async () => await base.ProcessImage(stayInPlace: true));
+
+        }
+    }
+
+    private double threshold2;
+    public double ThresHold2
+    {
+        get => threshold2;
+        set
+        {
+            threshold2 = value;
+            InvokeAsync(async () => await base.ProcessImage(stayInPlace: true));
+
+        }
+    }
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    { 
+        using var grayMat = new Mat();
+        using var dstMat = new Mat();
+        Cv2.CvtColor(startFrameMat, grayMat, ColorConversionCodes.BGR2GRAY);
+        Cv2.Canny(grayMat, dstMat, threshold1, threshold2);
+
+        await SetDstImage(dstMat);
+    }
+
+}

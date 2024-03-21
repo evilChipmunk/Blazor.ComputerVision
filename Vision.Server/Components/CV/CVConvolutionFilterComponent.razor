@@ -1,0 +1,146 @@
+﻿@using OpenCvSharp
+@inherits CVComponent
+
+<span style="display: none!important">@BaseComponentMarkup</span>
+
+<br />
+<br /> 
+
+<style>
+    .image-grid {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 20px;
+    }
+
+        .image-grid table {
+            border-collapse: collapse;
+        }
+
+        .image-grid td {
+            padding: 8px; /* Add padding to increase space between cells */
+            border: 1px solid black; /* Add border to outline cells in black */
+            width: 30px; /* Set the width of cells */
+            height: 30px; /* Set the height of cells */
+            text-align: center; /* Center-align content within cells */
+        }
+</style>
+
+<MudSelect T="FilterType" Label="Select a Filter" @bind-Value="SelectedFilter" Style="width: 200px;">
+    @foreach (var filterName in Enum.GetNames(typeof(FilterType)).Order())
+    {
+        <MudSelectItem Value="@(Enum.Parse<FilterType>(filterName))" Text="@filterName" />
+    }
+</MudSelect>
+  
+<br />
+<br />
+<br />
+<br />
+ @{
+    var filter = GetFilter(selectedFilter);
+    var total = calculatedValues.Cast<int>().Sum();
+
+    var color1 = "color: #6A0DAD;"; /* Deep Purple */
+    var color2 = "color: #007BFF;"; /* Vivid Blue */
+    var color3 = "color: #DAA520; font-weight:bold;"; /* Golden Rod */
+ }
+    <div class="image-grid">
+        <div>
+            <MudText Typo="Typo.h6">Original Image</MudText>
+            <table id="imageTable">
+                <!-- Add table rows and cells for the original image -->
+            </table>
+        </div>
+        <div>
+            <div> 
+                <MudText Typo="Typo.h6" Align="Align.Center">Filter</MudText>
+                <br />
+                <MudText Align="Align.Center">@selectedFilter.GetDescription()</MudText>
+                <br />
+                <br />
+            </div>
+            <div>
+
+            </div>
+        <table id="filterTable" style="margin: 0 auto;">
+                <!-- Add table rows and cells for the filter -->
+            </table>
+            
+            <br/>
+            <div style="margin: 0 auto;">
+
+            @if (currentStep.Item1 >= 0 && currentStep.Item2 >= 0)
+            {
+                <table>
+                    <!-- Header Row -->
+                    <tr>
+                        <td colspan="4">
+                            <span style="@color1">Filter value</span>
+                            <span> *</span>
+                            <span style="@color2">Pixel Value</span>
+                            <span> =</span>
+                            <span style="@color3">Calculated Value</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="font-size: 400%; vertical-align: middle;">(</td>
+                        <td>
+                            <table>
+                                <!-- Calculation Rows -->
+                                @for (int i = 0; i < 3; i++)
+                                {
+                                    <tr>
+                                        @for (int j = 0; j < 3; j++)
+                                        {
+                                            <td style="background-color: @colorSlice[i, j]; white-space: nowrap;">
+                                                <span style="@color1">@filter[i, j]</span>
+                                                <span> *</span>
+                                                <span style="@color2">@imageSlice[i, j]</span>
+                                                <span> =</span>
+                                                <span style="@color3">@calculatedValues[i, j]</span>
+                                            </td>
+
+                                            <!-- end cell has a + -->
+                                            if (j == 2)
+                                            {
+                                                <td>+</td>
+                                            }
+                                        }
+                                    </tr>
+                                }
+                                <!-- Total Row -->
+                                <tr>
+                                    <td colspan="4" style="white-space: nowrap; font-weight: bold;">Total = @total</td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td style="font-size: 400%; vertical-align: middle;">)</td>
+                    </tr>
+                </table>
+            }
+            
+        </div>
+        </div>
+        <div>
+            <MudText Typo="Typo.h6">Processed Image</MudText>
+            <table id="processedImageTable">
+                <!-- Add table rows and cells for the processed image -->
+            </table>
+        </div>
+    </div>
+
+
+ <br/>
+ <br/>
+ 
+
+ <MudButton OnClick="@ProcessNextStep" Color="Color.Primary" Style="margin-right: 10px;">Process Next</MudButton>
+ <MudButton OnClick="@ProcessEntireImage" Color="Color.Secondary">Process Entire Image</MudButton>
+ <MudButton OnClick="@Reset" Color="Color.Secondary">Reset</MudButton>
+
+
+
+<br />
+<br />
+@BaseCanvasMarkup

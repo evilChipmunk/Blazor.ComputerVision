@@ -1,0 +1,117 @@
+﻿@using OpenCvSharp
+@inherits CVComponent 
+<br />
+<br/>
+<MudGrid> 
+    <MudItem xs="12" md="6"> 
+        <MudText Typo="Typo.h6">General Settings</MudText> 
+        @BaseComponentMarkup
+    </MudItem> 
+    <MudItem xs="12" md="6">
+        <div class="threshold-component"> 
+            <MudText Typo="Typo.h6">Operation Settings</MudText> 
+            <MudText>Threshold</MudText>
+            <MudSlider @bind-Value="OpticalFlowMagnitudeThreshold" Immediate="false" Min="0" Max="100" Color="Color.Info">@OpticalFlowMagnitudeThreshold</MudSlider>
+        </div>
+    </MudItem>
+</MudGrid>
+
+
+
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+@BaseCanvasMarkup
+
+@code {
+
+
+    protected override Task OnInitializedAsync()
+    {
+        opticalFlowMagnitudeThreshold = 2.0f;
+        IsTimeSeriesFrame = true;
+        return base.OnInitializedAsync();
+    }
+
+    private float opticalFlowMagnitudeThreshold;
+    public float OpticalFlowMagnitudeThreshold
+    {
+        get => opticalFlowMagnitudeThreshold;
+        set
+        {
+            opticalFlowMagnitudeThreshold = value;
+            InvokeAsync(async () => await base.ProcessImage(stayInPlace:true));
+
+        }
+    }
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {   
+        using var initialGrayMat = new Mat();// initialMat.Clone();
+        using var lastGrayMat = new Mat();
+
+        Cv2.CvtColor(startFrameMat, initialGrayMat, ColorConversionCodes.BGR2GRAY);
+        Cv2.CvtColor(endFrameMat, lastGrayMat, ColorConversionCodes.BGR2GRAY);
+
+        using var prevPts = new Mat();
+        using var nextPts = new Mat();
+        using var status = new Mat();
+        using var err = new Mat();
+
+        try
+        {
+
+            // Perform optical flow calculation using the Farneback method
+            Cv2.CalcOpticalFlowFarneback(
+                prev: initialGrayMat,
+                next: lastGrayMat,
+                flow: nextPts,
+                pyrScale: 0.5,
+                levels: 3,
+                winsize: 15,
+                iterations: 3,
+                polyN: 5,
+                polySigma: 1.2,
+                flags: 0);
+
+            // Draw the flow vectors on the canvas
+            var flowImage = new Mat();
+            Cv2.CvtColor(lastGrayMat, flowImage, ColorConversionCodes.GRAY2BGR);
+            // DrawFlowVectors(flowImage, nextPts, status, Scalar.Red);
+            DrawFlowVectors(flowImage, nextPts, Scalar.Red);
+
+            await SetDstImage(flowImage);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+            throw;
+        }
+    }
+    
+    private void DrawFlowVectors(Mat image, Mat flow, Scalar color)
+    {
+        for (int y = 0; y < image.Rows; y += 10)
+        {
+            for (int x = 0; x < image.Cols; x += 10)
+            {
+                // Directly use the flow vector without status check
+                var flowVector = flow.At<Point2f>(y, x);
+
+                float magnitude = (float)Math.Sqrt(flowVector.X * flowVector.X + flowVector.Y * flowVector.Y);
+
+                // Only draw the vector if its magnitude exceeds the threshold
+                if (magnitude > opticalFlowMagnitudeThreshold)
+                {
+                    var startPoint = new Point(x, y);
+                    var endPoint = new Point((int)(x + flowVector.X), (int)(y + flowVector.Y));
+                    Cv2.Line(image, startPoint, endPoint, color, 2);
+                    Cv2.Circle(image, endPoint, 3, color, -1);
+                }
+            }
+        }
+    }
+
+}

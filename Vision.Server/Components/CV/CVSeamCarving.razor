@@ -1,0 +1,85 @@
+﻿ 
+<style>
+    #myGrid .responsive-image {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+
+<h3>Seam Carving</h3>
+
+<MudButton OnClick="ShowReduced">Show image reduction</MudButton>
+<br />
+<br />
+<br />
+
+@if (showreduced)
+{
+    <MudGrid Id="myGrid">
+        <MudItem xs="12" sm="6">
+            <MudImage Src="images/seamcarving/original.png" Alt="Description of the image" Class="responsive-image" />
+        </MudItem>
+        <MudItem xs="12" sm="6">
+            <MudImage Src="@($"images/seamcarving/reduced.gif?uniqueId={uniqueIdForReducedGif}")" Alt="Description of the image" Class="responsive-image" />
+        </MudItem>
+    </MudGrid>
+
+    <br />
+    <br />
+    <br />
+}
+
+<MudGrid Id="myGrid">
+    <MudItem xs="12" sm="4">
+        <MudImage Src="images/seamcarving/basefilter.png" Alt="Description of the image" Class="responsive-image" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudImage Src="images/seamcarving/heatmap.png" Alt="Description of the image" Class="responsive-image" />
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudImage Src="images/seamcarving/colored.png" Alt="Description of the image" Class="responsive-image" />
+    </MudItem>
+</MudGrid>
+<br />
+<br />
+<br />
+
+<MudButton OnClick="ShowExpanded">Show image expansion</MudButton>
+<br />
+<br />
+<br />
+ 
+@if (showexpanded)
+{ 
+    <MudGrid>
+        <MudItem xs="12" sm="3">
+            <MudImage Fluid="true" Src="images/seamcarving/original.png" Alt="Description of the image" />
+        </MudItem>
+        <MudItem xs="12" sm="9">
+            <MudImage Fluid="true" Src="@($"images/seamcarving/expanded.gif?uniqueId={uniqueIdForExpandedGif}")" Alt="Description of the image" />
+        </MudItem>
+    </MudGrid> 
+}
+
+@code {
+    bool showreduced = false;
+    bool showexpanded = false;
+    private string uniqueIdForReducedGif = "1"; // Initial unique identifier
+    private string uniqueIdForExpandedGif = "1"; // Initial unique identifier
+
+    private Task ShowExpanded()
+    {
+        uniqueIdForExpandedGif = Guid.NewGuid().ToString();
+        showexpanded = !showexpanded;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task ShowReduced()
+    {
+        uniqueIdForReducedGif = Guid.NewGuid().ToString();
+        showreduced = !showreduced;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+}

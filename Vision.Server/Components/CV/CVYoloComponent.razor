@@ -1,0 +1,75 @@
+﻿@using OpenCvSharp
+@using OpenCvSharp.Dnn
+@using Python.Runtime
+@using Size = OpenCvSharp.Size
+@using System.Diagnostics
+@using Imaging2
+@using ImagingOps
+@inherits CVComponent
+@BaseComponentMarkup 
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br /> 
+<span>@progress</span>
+<br />
+<br />
+
+@if (result != null)
+{
+    <MudCard>
+        <MudCardContent>
+            <MudText Typo="Typo.h6">Yolo Result</MudText>
+            <MudGrid>
+                @foreach (var item in result.Items)
+                {
+                    <MudItem xs="12" sm="2">
+                        <MudCard Class="m-2">
+                            <MudCardContent Class="p-2">
+                                <MudText>@item.Label</MudText>
+                                <MudText>@item.Confidence.ToString(("F4"))</MudText>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+    <br/>
+    <br/> 
+}
+@BaseCanvasMarkup
+@code {
+     
+    private string progress = "";
+    private YoloResult result;
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {
+        progress = "Operation started";
+        result = null;
+        StateHasChanged();
+  
+        YoloRunner yoloRunner = new YoloRunner(Configuration);
+
+        var start = Stopwatch.StartNew();
+        result = await yoloRunner.MakePrediction(startFrameMat);
+        var predictionEnd = start.Elapsed.TotalMilliseconds;
+
+        if (result != null)
+        { 
+            var dst = result.Mat;
+            await SetDstImage(dst);
+
+            var end = start.Elapsed.TotalMilliseconds;
+
+            progress = $"Operation completed - prediction took: {predictionEnd} ms, total time: {end} ms";
+        }
+        else
+        {
+            progress = "Operation failed";
+        } 
+        StateHasChanged();
+    } 
+}

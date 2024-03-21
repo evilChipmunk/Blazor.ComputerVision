@@ -1,0 +1,23 @@
+﻿@using OpenCvSharp
+@inherits CVComponent
+@BaseComponentMarkup
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+@BaseCanvasMarkup
+
+@code {
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {  
+        using var grayMat = new Mat();
+        using var dstMat = new Mat();
+        Cv2.CvtColor(startFrameMat, grayMat, ColorConversionCodes.BGR2GRAY);
+        Cv2.ApplyColorMap(grayMat, dstMat, ColormapTypes.Jet);
+
+        await SetDstImage(dstMat);
+    }
+
+}

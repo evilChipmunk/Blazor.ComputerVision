@@ -1,0 +1,66 @@
+﻿@page "/"
+@using System.ComponentModel
+
+@inject NavigationManager navManager
+
+<MudTabs Color="@Color.Primary">
+    @foreach (var category in Enum.GetValues<InfoType>())
+    {
+        <MudTabPanel Text="@category.GetDescription()" OnClick="@(() => SelectOperation(category))"></MudTabPanel>
+    }
+</MudTabs>
+
+ 
+@code {
+     
+    public enum InfoType
+    {
+        [Description("Computer Vision")]
+        ComputerVision,
+
+        [Description("This Site")]
+        ThisSite,
+
+        [Description("What is an Image")]
+        Image,
+
+        [Description("Image pipeline")]
+        ImagePipeline,
+
+        [Description("ParticleFilter")]
+        ParticleFilter,
+         
+        [Description("References")]
+        Links,
+
+
+    }
+    private InfoType selectedOperation = InfoType.ComputerVision;  
+    private void SelectOperation(InfoType operation)
+    {
+        selectedOperation = operation;
+    } 
+}
+
+    
+@switch (selectedOperation)
+{ 
+    case InfoType.ComputerVision:
+        <ComputerVision></ComputerVision>
+        break; 
+    case InfoType.ThisSite:
+        <ThisSite></ThisSite>
+        break; 
+    case InfoType.Image:
+        <Image></Image>
+        break;
+    case InfoType.ImagePipeline:
+        <ImagePipeline></ImagePipeline>
+        break;
+        case InfoType.ParticleFilter:
+        navManager.NavigateTo("/particlelatex.html", forceLoad:true);
+        break;
+    case InfoType.Links:
+        <Links></Links>
+        break;
+}

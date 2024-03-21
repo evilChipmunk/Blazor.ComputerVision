@@ -1,0 +1,53 @@
+﻿@using OpenCvSharp
+@using ImagingOps
+@using System.Diagnostics
+@using Imaging2
+@inherits CVComponent
+
+<MudGrid>
+    <!-- General Settings Column -->
+    <MudItem xs="12" md="6">
+        <MudText Typo="Typo.h6">General Settings</MudText>
+        @BaseComponentMarkup
+    </MudItem>
+
+    <!-- Operation Settings Column -->
+    <MudItem xs="12" md="6">
+        <MudText Typo="Typo.h6">Operation Settings</MudText>
+
+        <MudSelect HelperText="Select model" @bind-Value="SelectedModel">
+            @foreach (ParticleModelType model in Enum.GetValues(typeof(ParticleModelType)))
+            {
+                <MudSelectItem T="ParticleModelType" Value="@model">@model.GetDescription()</MudSelectItem>
+            }
+        </MudSelect>
+         
+        <MudSlider @bind-Value="filterScaler.ScaleValue" Min="0" Max="200" Color="Color.Info">Frame Scale: @filterScaler.ScaleValue% Image (Height, Width): (@filterScaler.ImageHeight, @filterScaler.ImageWidth)</MudSlider>
+
+        <!-- Nested Grid for Sliders in Two Columns -->
+        <MudGrid>
+            <MudItem xs="6">
+                <MudSlider Immediate="false" @bind-Value="Particles" Min="1" Max="1000" Color="Color.Info">Particles: @Particles</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider Immediate="false" @bind-Value="Sigma_MSE" Min="0" Max="200" Color="Color.Info">Sigma: @Sigma_MSE</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider Immediate="false" @bind-Value="Sigma_Dyn" Min="1" Max="200" Color="Color.Info">Dyn: @Sigma_Dyn</MudSlider>
+            </MudItem>
+            <MudItem xs="6">
+                <MudSlider Immediate="false" @bind-Value="AlphaBinding" Min="1" Max="100" Color="Color.Info">Alpha: @((AlphaBinding / 100).ToString("P0"))</MudSlider>
+            </MudItem>
+        </MudGrid>
+    </MudItem>
+</MudGrid>
+
+ 
+   
+    <br />
+    <br />
+    @BaseButtonMarkup 
+    <br />
+    <br /> 
+
+@BaseCanvasMarkup

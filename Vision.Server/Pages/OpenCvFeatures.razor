@@ -1,0 +1,109 @@
+﻿@page "/opencvfeatures"
+
+<MudTabs Color="@Color.Primary">
+    @foreach (var category in operationsByCategory.Keys)
+    {
+        <MudTabPanel Text="@category" OnClick="@(() => SelectCategory(category))"></MudTabPanel>
+    }
+</MudTabs>
+
+@if (operationsByCategory.ContainsKey(selectedCategory))
+{ 
+    <MudTabs>
+        @foreach (var operationType in operationsByCategory[selectedCategory])
+        {
+            <MudTabPanel Text="@operationType.GetDescription()" OnClick="@(() => SelectOperation(operationType))"></MudTabPanel>
+        }
+    </MudTabs>
+}
+@code {
+    private OperationType selectedOperation = OperationType.None;
+    private string selectedCategory = "Primary Operations";
+
+    private Dictionary<string, List<OperationType>> operationsByCategory = new Dictionary<string, List<OperationType>>
+    {
+        { "Primary Operations", new List<OperationType> { OperationType.Grayscale, OperationType.Threshold, OperationType.Canny, OperationType.Heatmap, OperationType.FFT, OperationType.ConvolutionFilter } },
+        { "Faces", new List<OperationType> { OperationType.FacialDetection, OperationType.FacialRecognition } },
+        { "Feature Finding", new List<OperationType> { OperationType.CornerDetection, OperationType.Akaze, OperationType.Orb, OperationType.OrbBestFeatures } },
+        { "Object Tracking and Identification", new List<OperationType> {OperationType.ObjectTrackingOpenCV, OperationType.Particle , OperationType.OpticalFlow,  OperationType.Yolo, OperationType.ObjectTrackingYOLO} },
+        { "Computational Photography", new List<OperationType> {OperationType.SeamCarving}}
+    };
+
+    private void SelectOperation(OperationType operation)
+    {
+        selectedOperation = operation;
+    }
+
+    private void SelectCategory(string category)
+    {
+        selectedCategory = category; 
+    }
+}
+
+
+
+<br/>
+<br/>
+ 
+    @switch (selectedOperation)
+    { 
+    case OperationType.None:
+        // Render NoneComponent
+        break;
+    case OperationType.Grayscale: 
+        <CVGrayscaleComponent></CVGrayscaleComponent>
+        break;
+    case OperationType.Canny: 
+        <CVCannyComponent></CVCannyComponent>
+        break;
+    case OperationType.Threshold: 
+        <CVThresholdComponent></CVThresholdComponent>
+        break;
+    case OperationType.Heatmap: 
+        <CVHeatmapComponent></CVHeatmapComponent>
+        break;
+    case OperationType.FFT: 
+        <CVFFTComponent></CVFFTComponent>
+        break;
+    case OperationType.Akaze: 
+        <CVAkazeComponent></CVAkazeComponent>
+        break;
+    case OperationType.Orb: 
+        <CVOrbComponent></CVOrbComponent>
+        break;
+    case OperationType.OrbBestFeatures: 
+        <CVORBBestComponent></CVORBBestComponent>
+        break;
+    case OperationType.OpticalFlow: 
+        <CVOpticalFlowComponent></CVOpticalFlowComponent>
+        break;
+    case OperationType.FacialDetection: 
+        <CVFacialDetectionComponent></CVFacialDetectionComponent>
+        break;
+    case OperationType.FacialRecognition: 
+        <CVFacialRecognitionComponent></CVFacialRecognitionComponent>
+        break;
+    case OperationType.Particle: 
+        <CVParticleFilterComponent Operation="OperationType.Particle"></CVParticleFilterComponent>
+        break;
+    case OperationType.Yolo: 
+        <CVYoloComponent></CVYoloComponent>
+        break; 
+    case OperationType.ConvolutionFilter:
+        <CVConvolutionFilterComponent></CVConvolutionFilterComponent>
+        break;
+    case OperationType.ObjectTrackingYOLO:
+        <YoloObjectTracking></YoloObjectTracking>
+        break;
+    case OperationType.ObjectTrackingOpenCV:
+        <OpenCVTracker></OpenCVTracker>
+        break;
+    case OperationType.SeamCarving:
+        <CVSeamCarving></CVSeamCarving>
+        break;
+    case OperationType.CornerDetection:
+        <CVCornerHarris></CVCornerHarris>
+        break;
+    }
+
+ 

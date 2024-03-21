@@ -1,0 +1,17 @@
+﻿@using Imaging2
+@using Microsoft.Extensions.Options
+@inject Configuration Configuration
+
+<h3>OpenCV Tracker</h3>
+
+<MudButton OnClick="RunPythonTracker">Run</MudButton>
+@code {
+
+    private Task RunPythonTracker()
+    {
+        var runner = new OpenCVTrackerRunner(Configuration);
+        runner.Run();
+        return Task.CompletedTask;
+    }
+
+}

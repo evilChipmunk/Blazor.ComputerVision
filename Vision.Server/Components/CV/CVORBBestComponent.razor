@@ -1,0 +1,69 @@
+﻿@using OpenCvSharp
+@using ImagingOps
+@using Size = OpenCvSharp.Size
+@inherits CVComponent
+@BaseComponentMarkup
+<br />
+<br />
+@BaseButtonMarkup
+<br />
+<br />
+@BaseCanvasMarkup
+
+@code {
+
+    protected override Task OnInitializedAsync()
+    {
+        IsTimeSeriesFrame = true;
+        return base.OnInitializedAsync();
+    }
+
+    protected override async Task Process(Mat startFrameMat, Mat endFrameMat)
+    {  
+        using var initialGrayMat = new Mat();
+        using var lastGrayMat = new Mat();
+
+        Cv2.CvtColor(startFrameMat, initialGrayMat, ColorConversionCodes.BGR2GRAY);
+        Cv2.CvtColor(endFrameMat, lastGrayMat, ColorConversionCodes.BGR2GRAY);
+
+
+        // Initialize the ORB detector
+        var orb = ORB.Create();
+
+        // Detect keypoints and compute descriptors
+        KeyPoint[] initialKeypoints;
+        Mat initialDescriptors = new Mat();
+        orb.DetectAndCompute(initialGrayMat, null, out initialKeypoints, initialDescriptors);
+
+        KeyPoint[] lastKeypoints;
+        Mat lastDescriptors = new Mat();
+        orb.DetectAndCompute(lastGrayMat, null, out lastKeypoints, lastDescriptors);
+
+        // Initialize the Brute-Force matcher
+        var bf = new BFMatcher(NormTypes.Hamming, crossCheck: true);
+
+        // Match the descriptors
+        var matches = bf.Match(initialDescriptors, lastDescriptors);
+
+        // Sort the matches by distance
+        var sortedMatches = matches.OrderBy(match => match.Distance).ToArray();
+
+        // Draw the first 10 matches
+        using var result = new Mat();
+        Cv2.DrawMatches(initialGrayMat, initialKeypoints, lastGrayMat, lastKeypoints,
+            sortedMatches.Take(10).ToArray(), result, flags: DrawMatchesFlags.NotDrawSinglePoints);
+
+        // Find the bounding box
+        var listKp2 = sortedMatches.Take(10).Select(mat => lastKeypoints[mat.TrainIdx].Pt).ToArray();
+        var xCoords = listKp2.Select(kp => kp.X).ToArray();
+        var yCoords = listKp2.Select(kp => kp.Y).ToArray();
+        var topLeft = new Point(xCoords.Min(), yCoords.Min());
+        var bottomRight = new Point(xCoords.Max(), yCoords.Max());
+
+        // Draw the bounding box
+        Cv2.Rectangle(result, topLeft, bottomRight, Scalar.Green, 4);
+
+        var dst = ImageOps.Resize(result, DisplayScaler.ImageWidth, DisplayScaler.ImageHeight);
+        await SetDstImage(dst);
+    }
+}
